@@ -29,8 +29,8 @@ class Chef::ResourceDefinitionList::MongoDB
     require 'mongo'
 
     if members.length == 0
-			Chef::Log.warn("Cannot configure replicaset '#{name}', no member nodes found")
-			return
+      Chef::Log.warn("Cannot configure replicaset '#{name}', no member nodes found")
+      return
     end
 
     begin
