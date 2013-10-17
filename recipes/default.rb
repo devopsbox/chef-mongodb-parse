@@ -19,9 +19,24 @@
 # limitations under the License.
 #
 
-package node[:mongodb][:package_name] do
+import_recipe "mongodb::fakeroot"
+
+mongodb_package_name = node[:mongodb][:package_name]
+mongodb_version      = node[:mongodb][:mongodb_version]
+
+
+## hack to prevent mongodb from starting on installation
+## not portable, but will work reliably
+# http://askubuntu.com/questions/74061/install-packages-without-starting-background-processes-and-services
+bash "install #{mongodb_package_name} package" do
+  code "PATH=/root/fake:$PATH apt-get install #{mongodb_package_name} -y"
+  not_if "dpgk -l|grep #{mongodb_package_name} |grep -v sh"
+end
+
+
+package mongodb_package_name do
   action :install
-  version "#{node[:mongodb][:mongodb_version]}"
+  version mongodb_version
 end
 
 needs_mongo_gem = (run_context.loaded_recipe?("mongodb::replicaset") or run_context.loaded_recipe?("mongodb::mongos"))
