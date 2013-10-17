@@ -1,7 +1,7 @@
 include_recipe "aws"
 
 chef_gem "aws-sdk" do
-  version "1.3.5"
+  version "1.21.0"
   action :install
 end
 
