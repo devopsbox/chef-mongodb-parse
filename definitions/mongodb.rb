@@ -197,7 +197,7 @@ define :mongodb_instance, :mongodb_type => "mongod" , :action => [:enable, :star
        mongodb_shard_name:#{replicaset['mongodb']['shard_name']} AND \
        chef_environment:#{replicaset.chef_environment}"
     )
-
+    Chef::Log.info("Found following members: #{rs_nodes.inspect}")
     ruby_block "config_replicaset" do
       block do
         if not replicaset.nil?
