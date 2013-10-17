@@ -93,3 +93,7 @@ default[:mongodb][:mongodb_version] = "2.2.3"
 
 default[:backups][:mongo_volumes] = []
 
+# AWS credentials
+default[:mongodb][:aws_access_key_id] = ""
+default[:mongodb][:aws_secret_access_key] = ""
+
