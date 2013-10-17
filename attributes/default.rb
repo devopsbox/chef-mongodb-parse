@@ -17,26 +17,24 @@
 # limitations under the License.
 #
 
-default[:mongodb][:dbpath] = "/var/lib/mongodb"
+default[:mongodb][:dbpath]  = "/var/lib/mongodb"
 default[:mongodb][:logpath] = "/var/log/mongodb"
 default[:mongodb][:bind_ip] = nil
-default[:mongodb][:port] = 27017
+default[:mongodb][:port]    = 27017
 
 # cluster identifier
-default[:mongodb][:client_roles] = []
-default[:mongodb][:cluster_name] = nil
-default[:mongodb][:replicaset_name] = nil
-default[:mongodb][:shard_name] = "default"
+default[:mongodb][:client_roles]      = []
+default[:mongodb][:cluster_name]      = nil
+default[:mongodb][:replicaset_name]   = nil
+default[:mongodb][:shard_name]        = "default"
 default[:mongodb][:replicaset_prefix] = "rs_"
 
 default[:mongodb][:enable_rest] = false
+default[:mongodb][:user]        = "mongodb"
+default[:mongodb][:group]       = "mongodb"
+default[:mongodb][:root_group]  = "root"
 
-default[:mongodb][:user] = "mongodb"
-default[:mongodb][:group] = "mongodb"
-default[:mongodb][:root_group] = "root"
-
-default[:mongodb][:init_dir] = "/etc/init.d"
-
+default[:mongodb][:init_dir]             = "/etc/init.d"
 default[:mongodb][:init_script_template] = "mongodb.init.erb"
 
 # set this to true to use /etc/mongdb.conf instead of command line arguments
