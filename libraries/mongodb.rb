@@ -34,10 +34,16 @@ class Chef::ResourceDefinitionList::MongoDB
     end
 
     begin
+      tries ||= 3
       connection = Mongo::Connection.new('localhost', node['mongodb']['port'], :op_timeout => 5, :slave_ok => true)
     rescue
-      Chef::Log.warn("Could not connect to database: 'localhost:#{node['mongodb']['port']}'")
-      return
+      if (tries -= 1) > 0
+        sleep 2
+        retry
+      else
+        Chef::Log.warn("Could not connect to database: 'localhost:#{node['mongodb']['port']}'")
+        return
+      end
     end
 
     # Want the node originating the connection to be included in the replicaset
