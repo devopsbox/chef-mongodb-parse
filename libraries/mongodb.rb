@@ -21,18 +21,45 @@
 
 require 'json'
 
-class Chef::ResourceDefinitionList::MongoDB
+class Chef::ReplSet
+  attr_accessor :node, :name, :members
+  def initialize(node, name, members)
+    @node, @name, @members = node, name, members
 
-  def self.configure_replicaset(node, name, members)
-    # lazy require, to move loading this modules to runtime of the cookbook
-    require 'rubygems'
-    require 'mongo'
+    # Want the node originating the connection to be included in the replicaset
+    @members << @node unless @members.map(&:name).include?(node.name)
+    @members.sort!{ |x,y| x.name <=> y.name }
+  end
 
-    if members.length == 0
-      Chef::Log.warn("Cannot configure replicaset '#{name}', no member nodes found")
-      return
+
+  def rs_members
+    res = []
+    members.each_index do |n|
+      port = members[n]['mongodb']['port']
+      res << {"_id" => n, "host" => "#{members[n]['fqdn']}:#{port}"}
     end
+  end
 
+  def rs_member_ips
+    res = []
+    members.each_index do |n|
+      port = members[n]['mongodb']['port']
+      res << {"_id" => n, "host" => "#{members[n]['ipaddress']}:#{port}"}
+    end
+  end
+
+  def log_members
+    Chef::Log.info(
+      "Configuring replicaset with members #{members.collect{ |n| n['hostname'] }.join(', ')}"
+    )
+  end
+
+
+  def connection
+    @mongo_connection ||= reset_connection!
+  end
+
+  def reset_connection!
     begin
       tries ||= 3
       connection = Mongo::Connection.new('localhost', node['mongodb']['port'], :op_timeout => 5, :slave_ok => true)
@@ -45,31 +72,32 @@ class Chef::ResourceDefinitionList::MongoDB
         return
       end
     end
+  end
 
-    # Want the node originating the connection to be included in the replicaset
-    members << node unless members.map(&:name).include?(node.name)
-    members.sort!{ |x,y| x.name <=> y.name }
-    rs_members = []
-    members.each_index do |n|
-      port = members[n]['mongodb']['port']
-      rs_members << {"_id" => n, "host" => "#{members[n]['fqdn']}:#{port}"}
+end
+
+class Chef::ResourceDefinitionList::MongoDB
+
+  def self.configure_replicaset(node, name, members)
+    # lazy require, to move loading this modules to runtime of the cookbook
+    require 'rubygems'
+    require 'mongo'
+
+    if members.length == 0
+      Chef::Log.warn("Cannot configure replicaset '#{name}', no member nodes found")
+      return
     end
 
+    repl_set   = Chef::ReplSet.new(node, name, members)
 
-    Chef::Log.info(
-      "Configuring replicaset with members #{members.collect{ |n| n['hostname'] }.join(', ')}"
-    )
+    connection = repl_set.connection
+    repl_set.log_members
 
-    rs_member_ips = []
-    members.each_index do |n|
-      port = members[n]['mongodb']['port']
-      rs_member_ips << {"_id" => n, "host" => "#{members[n]['ipaddress']}:#{port}"}
-    end
 
     admin = connection['admin']
     cmd = BSON::OrderedHash.new
     cmd['replSetInitiate'] = {
-        "_id" => name,
+        "_id"     => name,
         "members" => rs_members
     }
 
@@ -79,6 +107,9 @@ class Chef::ResourceDefinitionList::MongoDB
       Chef::Log.info("Started configuring the replicaset, this will take some time, another run should run smoothly")
       return
     end
+
+
+
     if result.fetch("ok", nil) == 1
       # everything is fine, do nothing
     elsif result.fetch("errmsg", nil) == "already initialized"
