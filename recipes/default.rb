@@ -19,7 +19,7 @@
 # limitations under the License.
 #
 
-import_recipe "mongodb::fakeroot"
+include_recipe "mongodb::fakeroot"
 
 mongodb_package_name = node[:mongodb][:package_name]
 mongodb_version      = node[:mongodb][:mongodb_version]
