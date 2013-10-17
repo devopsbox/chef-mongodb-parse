@@ -1,6 +1,7 @@
 define :generate_raid_backups do
-  aws_creds = Chef::EncryptedDataBagItem.load("passwords", "aws")
 
+  aws_access_key_id     = node[:mongodb][:aws_access_key_id]
+  aws_secret_access_key = node[:mongodb][:aws_secret_access_key]
 #  volumes = node[:backups][:mongo_volumes].join(" ")
 
   template "/usr/local/bin/raid_snapshot.sh" do
@@ -8,8 +9,8 @@ define :generate_raid_backups do
     owner "root"
     group "root"
     mode "0755"
-    variables("seckey" => aws_creds["aws_secret_access_key"],
-              "awskey" => aws_creds["aws_access_key_id"])
+    variables("awskey" => aws_access_key_id,
+              "seckey" => aws_secret_access_key )
   end
 end
 
