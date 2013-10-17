@@ -23,7 +23,7 @@ include_recipe "mongodb"
 if !run_context.loaded_recipe?("mongodb::shard")
   # these are used in the library for searches
   node.set["mongodb_cluster_name"] = node['mongodb']['cluster_name']
-  node.set["mongodb_shard_name"] = node['mongodb']['shard_name']
+  node.set["mongodb_shard_name"]   = node['mongodb']['shard_name']
   mongodb_instance "mongodb" do
     mongodb_type "mongod"
     port         node['mongodb']['port']
