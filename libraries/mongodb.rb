@@ -47,7 +47,7 @@ class Chef::ResourceDefinitionList::MongoDB
     end
 
     # Want the node originating the connection to be included in the replicaset
-    members << node unless members.include?(node)
+    members << node unless members.map(&:name).include?(node.name)
     members.sort!{ |x,y| x.name <=> y.name }
     rs_members = []
     members.each_index do |n|
@@ -103,7 +103,7 @@ class Chef::ResourceDefinitionList::MongoDB
         config['members'].collect!{ |m| {"_id" => m["_id"], "host" => mapping[m["host"]]} }
         config['version'] += 1
 
-        rs_connection = Mongo::ReplSetConnection.new( *old_members.collect{ |m| m.split(":") })
+        rs_connection = Mongo::ReplSetConnection.new( old_members)
         admin = rs_connection['admin']
         cmd = BSON::OrderedHash.new
         cmd['replSetReconfig'] = config
