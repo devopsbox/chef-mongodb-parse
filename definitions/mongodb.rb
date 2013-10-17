@@ -243,7 +243,10 @@ define :create_raided_drives_from_snapshot, :disk_counts => 4,
   aws_access_key_id     = node[:mongodb][:aws_access_key_id]
   aws_secret_access_key = node[:mongodb][:aws_secret_access_key]
 
+
   aws_ebs_raid "createmongodir" do
+        aws_access_key        aws_access_key_id
+        aws_secret_access_key aws_secret_access_key
         mount_point node[:mongodb][:dbpath]
         disk_count params[:disk_counts]
         disk_size  params[:disk_size]
@@ -251,6 +254,7 @@ define :create_raided_drives_from_snapshot, :disk_counts => 4,
         disk_piops params[:disk_piops]
         filesystem params[:filesystem]
         level      params[:level]
+
         action     [:auto_attach]
         snapshots  MongoDB.find_snapshots(aws_access_key_id,
                                           aws_secret_access_key,
