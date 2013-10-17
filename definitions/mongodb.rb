@@ -26,23 +26,25 @@ define :mongodb_instance, :mongodb_type => "mongod" , :action => [:enable, :star
 
   include_recipe "mongodb::default"
 
-  name = params[:name]
-  type = params[:mongodb_type]
-  service_action = params[:action]
-  service_notifies = params[:notifies]
-
-  bind_ip = params[:bind_ip]
-  port = params[:port]
-
-  logpath = params[:logpath]
-  logfile = "#{logpath}/#{name}.log"
-
-  dbpath = params[:dbpath]
-
-  configfile = params[:configfile]
+  name               = params[:name]
+  type               = params[:mongodb_type]
+  service_action     = params[:action]
+  service_notifies   = params[:notifies]
+  bind_ip            = params[:bind_ip]
+  port               = params[:port]
+  logpath            = params[:logpath]
+  logfile            = "#{logpath}/#{name}.log"
+  dbpath             = params[:dbpath]
+  configfile         = params[:configfile]
   configserver_nodes = params[:configserver]
+  replicaset         = params[:replicaset]
 
-  replicaset = params[:replicaset]
+  # get out as soon, as possible
+  if !["mongod", "shard", "configserver", "mongos"].include?(type)
+    raise "Unknown mongodb type '#{type}'"
+  end
+
+
   if type == "shard"
     if replicaset.nil?
       replicaset_name = nil
@@ -74,10 +76,6 @@ define :mongodb_instance, :mongodb_type => "mongod" , :action => [:enable, :star
     end
   end
 
-  if !["mongod", "shard", "configserver", "mongos"].include?(type)
-    raise "Unknown mongodb type '#{type}'"
-  end
-
   if node[:mongodb][:use_config_file]
     type == "mongos" ? daemon = "/usr/bin/mongos" : daemon = "/usr/bin/mongod"
     template configfile do
@@ -86,11 +84,13 @@ define :mongodb_instance, :mongodb_type => "mongod" , :action => [:enable, :star
       owner "root"
       group node[:mongodb][:root_group]
       mode "0644"
-      variables("port" => port,
-                "dbpath" => dbpath,
-                "logpath" => logfile,
-                "replicaset_name" => replicaset_name,
-                "enable_rest" => params[:enable_rest])
+      variables(
+        "port"            => port,
+        "dbpath"          => dbpath,
+        "logpath"         => logfile,
+        "replicaset_name" => replicaset_name,
+        "enable_rest"     => params[:enable_rest]
+      )
       if node[:mongodb][:should_restart_server]
         notifies :restart, "service[#{name}]"
       end
@@ -108,7 +108,7 @@ define :mongodb_instance, :mongodb_type => "mongod" , :action => [:enable, :star
     end
   end
 
-  # default file
+  # /etc/default file
   template "#{node['mongodb']['defaults_dir']}/#{name}" do
     action :create
     source "mongodb.default.erb"
@@ -116,18 +116,18 @@ define :mongodb_instance, :mongodb_type => "mongod" , :action => [:enable, :star
     owner "root"
     mode "0644"
     variables(
-      "daemon_path" => daemon,
-      "name" => name,
-      "config" => configfile,
-      "configdb" => configserver,
-      "bind_ip" => bind_ip,
-      "port" => port,
-      "logpath" => logfile,
-      "dbpath" => dbpath,
+      "daemon_path"     => daemon,
+      "name"            => name,
+      "config"          => configfile,
+      "configdb"        => configserver,
+      "bind_ip"         => bind_ip,
+      "port"            => port,
+      "logpath"         => logfile,
+      "dbpath"          => dbpath,
       "replicaset_name" => replicaset_name,
-      "configsrv" => false, #type == "configserver", this might change the port
-      "shardsrv" => false,  #type == "shard", dito.
-      "enable_rest" => params[:enable_rest]
+      "configsrv"       => false, #type == "configserver", this might change the port
+      "shardsrv"        => false,  #type == "shard", dito.
+      "enable_rest"     => params[:enable_rest]
     )
     if node[:mongodb][:should_restart_server]
       notifies :restart, "service[#{name}]"
@@ -190,14 +190,6 @@ define :mongodb_instance, :mongodb_type => "mongod" , :action => [:enable, :star
 
   # replicaset
   if !replicaset_name.nil?
-    ## that query sux...
-    # rs_nodes = search(
-    #   :node,
-    #   "mongodb_cluster_name:#{replicaset['mongodb']['cluster_name']} AND \
-    #    recipes:mongodb\\:\\:replicaset AND \
-    #    mongodb_shard_name:#{replicaset['mongodb']['shard_name']} AND \
-    #    chef_environment:#{replicaset.chef_environment}"
-    # )
 
     rs_nodes = search(
       :node,
@@ -241,40 +233,3 @@ define :mongodb_instance, :mongodb_type => "mongod" , :action => [:enable, :star
     end
   end
 end
-
-define :create_raided_drives_from_snapshot, :disk_counts => 4,
-       :disk_size => 999, :level => 10, :filesystem => "ext4",
-       :disk_type => "standard", :disk_piops => 0 do
-  Chef::Log.info("cluster name is #{node[:mongodb][:cluster_name]}")
-  require 'aws/s3'
-
-  aws_access_key_id     = node[:mongodb][:aws_access_key_id]
-  aws_secret_access_key = node[:mongodb][:aws_secret_access_key]
-
-
-  aws_ebs_raid "createmongodir" do
-        aws_access_key        aws_access_key_id
-        aws_secret_access_key aws_secret_access_key
-        mount_point node[:mongodb][:dbpath]
-        disk_count params[:disk_counts]
-        disk_size  params[:disk_size]
-        disk_type  params[:disk_type]
-        disk_piops params[:disk_piops]
-        filesystem params[:filesystem]
-        level      params[:level]
-
-        action     [:auto_attach]
-        snapshots  MongoDB.find_snapshots(aws_access_key_id,
-                                          aws_secret_access_key,
-                                          node[:backups][:region],
-                                          node[:backups][:mongo_volumes],
-                                          node[:mongodb][:cluster_name])
-  end
-  # Remove the lock file
-  execute "remove_mongo_lock" do
-    command "rm -f /var/lib/mongodb/mongod.lock && mkdir -p /var/chef/state && touch /var/chef/state/finish_ebs_volumes"
-        creates "/var/chef/state/finish_ebs_volumes"
-        action :run
-  end
-end
-
