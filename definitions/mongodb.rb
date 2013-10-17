@@ -239,7 +239,10 @@ define :create_raided_drives_from_snapshot, :disk_counts => 4,
        :disk_type => "standard", :disk_piops => 0 do
   Chef::Log.info("cluster name is #{node[:mongodb][:cluster_name]}")
   require 'aws/s3'
-  aws = data_bag_item(node[:aws][:databag_name], node[:aws][:databag_entry])
+
+  aws_access_key_id     = node[:mongodb][:aws_access_key_id]
+  aws_secret_access_key = node[:mongodb][:aws_secret_access_key]
+
   aws_ebs_raid "createmongodir" do
         mount_point node[:mongodb][:dbpath]
         disk_count params[:disk_counts]
@@ -249,8 +252,8 @@ define :create_raided_drives_from_snapshot, :disk_counts => 4,
         filesystem params[:filesystem]
         level      params[:level]
         action     [:auto_attach]
-        snapshots  MongoDB.find_snapshots(aws["aws_access_key_id"],
-                                          aws["aws_secret_access_key"],
+        snapshots  MongoDB.find_snapshots(aws_access_key_id,
+                                          aws_secret_access_key,
                                           node[:backups][:region],
                                           node[:backups][:mongo_volumes],
                                           node[:mongodb][:cluster_name])
