@@ -51,7 +51,9 @@ For examples see the USAGE section below.
 * `mongodb[:volsize]` - size of EBS volumes to provision, in GB
 * `mongodb[:vols]` - number of volumes to provision and RAID together
 * `mongodb[:backup_host]` - Name of node to enable backups cron job on
-* `backups[:mongo_volumes]` - Array of EBS volume ids to snapshot (e.g. whatever volumes make up the 
+* `mongodb[:aws_access_key_id]` - AWS credentials
+* `mongodb[:aws_secret_access_key]` - AWS credentials
+* `backups[:mongo_volumes]` - Array of EBS volume ids to snapshot (e.g. whatever volumes make up the
     raid array that's mounted on /var/lib/mongodb on the backup host)
 
 
@@ -72,7 +74,7 @@ Simply add
 ```ruby
 include_recipe "mongodb::default"
 ```
-  
+
 to your recipe. This will run the mongodb instance as configured by your distribution.
 You can change the dbpath, logpath and port settings (see ATTRIBUTES) for this node by
 using the `mongodb_instance` definition:
@@ -92,7 +94,7 @@ mongodb_instance "my_instance" do
   dbpath "/data/"
 end
 ```
-  
+
 The result is a new system service with
 
 ```shell
@@ -116,7 +118,7 @@ include_recipe "mongodb::raid_data"
 ```
 
 Optionally set the attributes mongodb[:vols], mongodb[:volsize], mongodb[:piops], mongodb[:use_piops]
-to determine whether to use regular EBS or PIOPS, and the number and size of EBS volumes to 
+to determine whether to use regular EBS or PIOPS, and the number and size of EBS volumes to
 provision and RAID together.
 
 
@@ -152,7 +154,7 @@ attribute `mongodb[:sharded_collections]`:
   }
 }
 ```
-  
+
 Now mongos will automatically enable sharding for the "test" and the "mydatabase"
 database. Also the "addressbook" and the "calendar" collection will be sharded,
 with sharding key "name" resp. "date".
@@ -163,7 +165,7 @@ This is esp. important when you want to replicate shards.
 
 ## Sharding + Replication
 
-The setup is not much different to the one described above. All you have to do is adding the 
+The setup is not much different to the one described above. All you have to do is adding the
 `mongodb::replicaset` recipe to all shard nodes, and make sure that all shard
 nodes which should be in the same replicaset have the same shard name.
 
@@ -185,7 +187,7 @@ end
 
 ## Backups on EC2
 
-To enable EBS snapshot backups for a replica set, select one node to be your snapshot host.  Add the 
+To enable EBS snapshot backups for a replica set, select one node to be your snapshot host.  Add the
 `mongodb::backups` recipe to the node so the pymongo and boto libraries get installed.  Set
 that host as the mongodb[:backup_host] in your role attributes.  Set the backup[:mongo_volumes]
 attribute to whichever volume(s) are mounted as /var/lib/mongodb.  For example,
@@ -197,8 +199,8 @@ override_attributes "mongodb" => { "cluster_name" => "mycluster",
 ```
 
 The raid_snapshot script will get populated with the volume ids to back up.  It will take a
-"daily" snapshot if it has been > 24 hours since the last daily snapshot ran.  This is so you 
-can use the tags to expire hourly snapshots after a few days, and keep daily snapshots around for 
+"daily" snapshot if it has been > 24 hours since the last daily snapshot ran.  This is so you
+can use the tags to expire hourly snapshots after a few days, and keep daily snapshots around for
 longer.  The cron job to lock mongo and snapshot the volumes will be enabled only on the backup_host.
 
 # LICENSE and AUTHOR:
