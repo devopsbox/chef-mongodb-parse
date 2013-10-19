@@ -1,3 +1,4 @@
+# DONT USE! the chef cookbook for Mongodb from Parse.com are old and dont work with the recent (2.4) Mongodb version. Kept here for reference. 
 # DESCRIPTION:
 
 Installs and configures MongoDB, supporting:
